@@ -1,6 +1,20 @@
 import { Request, Response } from "express";
 import { pool } from "../../db/db";
 
+
+export const getAlerts = async (req: Request, res: Response) => {
+  try {
+    const result = await pool.query(
+      `SELECT * FROM alerts ORDER BY created_at DESC LIMIT 50`
+    );
+
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: "Failed to fetch alerts" });
+  }
+};
+
 // ACKNOWLEDGE
 export const acknowledgeAlert = async (req: Request, res: Response) => {
   const alertId = req.params.id;
