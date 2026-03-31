@@ -16,7 +16,7 @@ app.use(cors());
 app.use(express.json());
 
 app.use("/api", ingestRoutes);
-app.use("/api/alerts", alertRoutes); // ✅ ADD THIS
+app.use("/api/alerts", alertRoutes);
 app.use("/api/history", historyRoutes);
 
 const server = http.createServer(app);
