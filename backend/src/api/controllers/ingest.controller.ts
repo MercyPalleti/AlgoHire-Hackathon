@@ -15,35 +15,35 @@ export const ingestController = async (req: Request, res: Response) => {
     try {
       await client.query("BEGIN");
 
-      const insertQuery = `
-        INSERT INTO readings 
+      //  BULK INSERT
+      const values = readings
+        .map(
+          (_, i) =>
+            `($${i * 6 + 1}, $${i * 6 + 2}, $${i * 6 + 3}, $${i * 6 + 4}, $${i * 6 + 5}, $${i * 6 + 6})`
+        )
+        .join(",");
+
+      const flatValues = readings.flatMap((r) => [
+        r.sensor_id,
+        r.timestamp,
+        r.voltage,
+        r.current,
+        r.temperature,
+        r.status_code,
+      ]);
+
+      const result = await client.query(
+        `INSERT INTO readings 
         (sensor_id, timestamp, voltage, current, temperature, status_code)
-        VALUES ($1,$2,$3,$4,$5,$6)
-        RETURNING id
-      `;
-
-      const insertedReadings = [];
-
-      for (const r of readings) {
-        const result = await client.query(insertQuery, [
-          r.sensor_id,
-          r.timestamp,
-          r.voltage,
-          r.current,
-          r.temperature,
-          r.status_code,
-        ]);
-
-        insertedReadings.push({
-          ...r,
-          id: result.rows[0].id,
-        });
-      }
+        VALUES ${values}
+        RETURNING id, sensor_id, voltage, temperature`,
+        flatValues
+      );
 
       await client.query("COMMIT");
 
-      // push to queue (async processing)
-      await ingestQueue.add("process-readings", insertedReadings);
+      // push to queue (already enriched with DB ids)
+      await ingestQueue.add("process-readings", result.rows);
 
       return res.json({ success: true });
     } catch (err) {
@@ -57,3 +57,7 @@ export const ingestController = async (req: Request, res: Response) => {
     return res.status(500).json({ error: "Internal error" });
   }
 };
+
+
+
+
